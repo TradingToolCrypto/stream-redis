@@ -174,7 +174,7 @@ async function fetchAllKeysAndValues() {
         // get all the keys in an array
         const keys: string[] = await redisClient.keys('*');
 
-        console.log(`Total number of keys: ${keys.length}`);
+      //  console.log(`Total number of keys: ${keys.length}`);
 
         // Array to store parsed key-value data
         const parsedData: Array<Record<string, any>> = [];
