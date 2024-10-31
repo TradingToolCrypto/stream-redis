@@ -1,4 +1,8 @@
 /*
+
+untested and didn't look functional
+
+
 This implementation:
 
 - Handles multiple WebSocket streams from both spot and futures markets.
@@ -8,28 +12,28 @@ This implementation:
 
 */
 
-import WebSocket from 'ws';
-import Redis from 'redis';
+import WebSocket from "ws";
+import Redis from "redis";
 
 // Binance WebSocket URLs
-const BINANCE_WS_URL = 'wss://stream.binance.com:9443/ws/!ticker@arr';
-const BINANCE_F_WS_URL = 'wss://fstream.binance.com/ws/!ticker@arr'; // Futures market
+const BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/!ticker@arr";
+const BINANCE_F_WS_URL = "wss://fstream.binance.com/ws/!ticker@arr"; // Futures market
 
 // Redis client initialization
 const redisClient = Redis.createClient();
 let redisReady = false;
 
-redisClient.on('connect', () => {
-  console.log('Connected to Redis');
+redisClient.on("connect", () => {
+  console.log("Connected to Redis");
   redisReady = true;
 });
 
-redisClient.on('end', () => {
-  console.log('Redis connection closed');
+redisClient.on("end", () => {
+  console.log("Redis connection closed");
   redisReady = false;
 });
 
-redisClient.on('error', (err) => console.error('Redis Error:', err));
+redisClient.on("error", (err) => console.error("Redis Error:", err));
 
 // WebSocket management
 interface TickerData {
@@ -55,10 +59,10 @@ class BinanceWebSocket {
     console.log(`Connecting to WebSocket: ${this.url}`);
     this.ws = new WebSocket(this.url);
 
-    this.ws.on('open', () => this.onOpen());
-    this.ws.on('message', (data) => this.onMessage(data));
-    this.ws.on('close', (code, reason) => this.onClose(code, reason));
-    this.ws.on('error', (err) => this.onError(err));
+    this.ws.on("open", () => this.onOpen());
+    this.ws.on("message", (data) => this.onMessage(data));
+    this.ws.on("close", (code, reason) => this.onClose(code, reason));
+    this.ws.on("error", (err) => this.onError(err));
   }
 
   // On successful connection
@@ -74,7 +78,7 @@ class BinanceWebSocket {
       const tickers: TickerData[] = JSON.parse(data.toString());
       tickers.forEach((ticker) => {
         const { s: symbol, c: price } = ticker;
-        const redisKey = `${this.url.includes('futures') ? 'futures:' : 'spot:'}${symbol}`;
+        const redisKey = `${this.url.includes("f") ? "futures:" : "spot:"}${symbol}`;
 
         if (redisReady) {
           redisClient.set(redisKey, price, (err) => {
@@ -89,7 +93,7 @@ class BinanceWebSocket {
         }
       });
     } catch (error) {
-      console.error('Error parsing message:', error);
+      console.error("Error parsing message:", error);
     }
   }
 
@@ -101,7 +105,7 @@ class BinanceWebSocket {
 
   // Handle WebSocket errors
   private onError(err: Error) {
-    console.error('WebSocket Error:', err.message);
+    console.error("WebSocket Error:", err.message);
     this.reconnect();
   }
 
@@ -127,9 +131,14 @@ class BinanceWebSocket {
     }
 
     setTimeout(() => {
-      console.log(`Reconnecting to ${this.url} in ${this.reconnectInterval / 1000} seconds...`);
+      console.log(
+        `Reconnecting to ${this.url} in ${this.reconnectInterval / 1000} seconds...`,
+      );
       this.connect();
-      this.reconnectInterval = Math.min(this.reconnectInterval * 2, this.MAX_RECONNECT_INTERVAL);
+      this.reconnectInterval = Math.min(
+        this.reconnectInterval * 2,
+        this.MAX_RECONNECT_INTERVAL,
+      );
     }, this.reconnectInterval);
   }
 }
@@ -139,8 +148,8 @@ const spotSocket = new BinanceWebSocket(BINANCE_WS_URL);
 const futuresSocket = new BinanceWebSocket(BINANCE_F_WS_URL);
 
 // Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('Shutting down...');
-  redisClient.quit(() => console.log('Redis connection closed.'));
+process.on("SIGINT", () => {
+  console.log("Shutting down...");
+  redisClient.quit(() => console.log("Redis connection closed."));
   process.exit();
 });
