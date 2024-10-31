@@ -1,10 +1,13 @@
 {
-  "name": "stream-redis",
+  "name": "ttc-stream-redis",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --exec ts-node src/index.ts"
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "express": "ts-node src/rest_api.ts",
+    "spot": "ts-node src/stream_spot.ts",
+    "futures": "ts-node src/stream_futures.ts",
+    "pretty" : "npx prettier . --write"
   },
   "keywords": [],
   "author": "",
@@ -19,11 +22,17 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.13.0",
     "@types/express": "^5.0.0",
     "@types/node": "^22.8.2",
     "@types/ws": "^8.5.12",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.11.0",
     "nodemon": "^3.1.7",
+    "prettier": "3.3.3",
     "ts-node": "^10.9.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.12.2"
   }
 }

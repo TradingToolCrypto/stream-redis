@@ -1,73 +1,9 @@
 import WebSocket from "ws";
-import express from "express";
 import { createClient, RedisClientType } from "redis";
-/*
-v1 : binance 
-*/
-const ENDPOINT_VERSION = "/v1";
+
 // Binance WebSocket URL for all ticker prices
 const BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/!ticker@arr";
-const BINANCE_F_WS_URL = "wss://stream.binancefuture.com:9443/ws/!ticker@price";
-/*
-REST API ONLY
-The following base endpoints are available. 
-Please use whichever works best for your setup:
-https://api.binance.com
-https://api-gcp.binance.com
-https://api1.binance.com
-https://api2.binance.com
-https://api3.binance.com
-https://api4.binance.com
-
-https://fapi.binance.com
-
-WEBSOCKETS
-wss://stream.binancefuture.com
-The base endpoint is: wss://ws-fapi.binance.com/ws-fapi/v1
-A single connection can listen to a maximum of 1024 streams.
-There is a limit of 300 connections per attempt every 5 minutes per IP.
-*/
-
-/*
-import { AevoClient, AevoChainType } from "aevo-js-sdk";
-
-const aevoClient = new AevoClient({
-  signingKey: process.env.PRIVATE_KEY,
-  walletAddress: process.env.PUBLUC_ADDRESS,
-  apiKey: process.env.AEVO_API_KEY,
-  apiSecret: process.env.AEVO_API_SECRET,
-  chain: "mainnet" as AevoChainType ,
-  silent: false
-});
-
-
-// AEVO : create rest client
-const restClient = new AevoClient().getRestApiClient();
-
-const testAevo = async () => {
-
-    const data = await restClient.getMarkets({
-        asset: "ETH",
-        instrument_type: "OPTION",
-      });
-
-      console.log("AEVO REST API ", data);
-
-
-}
-
-testAevo();
-
-*/
-
-const app = express();
-/*
-Metatrader only works with port 80 with http and 443 with https
-*/
-const port = process.env.PORT || 80;
-
-// Middleware to parse JSON bodies
-app.use(express.json());
+const REDIS__OVERRIDE = true; // Override redis db with current streams
 
 // Initialize Redis Client
 const redisClient: RedisClientType = createClient({
@@ -133,7 +69,6 @@ interface TickerData {
 function handleTickerData(data: WebSocket.Data) {
   try {
     const tickers: TickerData[] = JSON.parse(data.toString());
-
     tickers.forEach((ticker) => {
       const { s: symbol, c: price, b: bid, a: ask, v: volume } = ticker;
       const redisKey = `${ws?.url.includes("f") ? "futures:" : "spot:"}${symbol}`;
@@ -150,12 +85,14 @@ function handleTickerData(data: WebSocket.Data) {
           spread: spr.toString(),
           spread_percent: sprPer.toString(),
         };
+
         // Save trade data to Redis
-        try {
-          redisClient.set(redisKey, JSON.stringify(dataIn));
-          //  console.log(`Trade data saved to Redis`, symbol, ticker);
-        } catch (err) {
-          console.error("Error saving trade to Redis:", err);
+        if (REDIS__OVERRIDE) {
+          try {
+            redisClient.set(redisKey, JSON.stringify(dataIn));
+          } catch (err) {
+            console.error("Error saving trade to Redis:", err);
+          }
         }
       }
     });
@@ -170,7 +107,7 @@ async function fetchAllKeysAndValues() {
     // get all the keys in an array
     const keys: string[] = await redisClient.keys("*");
 
-    //   console.log(`Total number of keys: ${keys.length}`);
+    //  console.log(`Total number of keys: ${keys.length}`);
 
     // Array to store parsed key-value data
     const parsedData: Array<Record<string, any>> = [];
@@ -178,8 +115,6 @@ async function fetchAllKeysAndValues() {
     // Fetch and parse each key's value
     for (const key of keys) {
       const value = await redisClient.get(key);
-
-      //   console.log(`Total number of keys: ${key}`);
 
       if (value) {
         try {
@@ -197,59 +132,6 @@ async function fetchAllKeysAndValues() {
     console.error("Error fetching keys and values:", error);
   }
 }
-
-// express ENDPOINT
-// Endpoint to get all the ticker data
-app.get(`${ENDPOINT_VERSION}/tickers`, async (req, res) => {
-  try {
-    // Run the function
-    const allKeys = await fetchAllKeysAndValues();
-
-    if (allKeys) {
-      // Convert the array to JSON
-      res.status(200).json(allKeys);
-    }
-  } catch (error) {
-    res.status(404).json({ error: "No trade data available" });
-  }
-});
-
-// express ENDPOINT
-// Endpoint to get the latest trade data from Redis
-app.get(`${ENDPOINT_VERSION}/ticker`, async (req, res) => {
-  console.log("INCOMING ", req);
-
-  // default if the user doesn't have a query
-  // if (req?.query?.symbol as string === null) {
-
-  //     try {
-  //         const tradeData = await redisClient.hGetAll("ticker");
-  //         if (tradeData) {
-  //             res.json(tradeData);
-  //             //  res.json(tradeData);
-  //         } else {
-  //             res.status(404).json({ error: 'No trade data available' });
-  //         }
-  //     } catch (error) {
-  //         console.error('Error fetching trade data:', error);
-  //         res.status(500).json({ error: 'Failed to fetch trade data' });
-  //     }
-
-  // }
-
-  try {
-    const tradeData = await redisClient.get(req?.query?.symbol as string);
-    if (tradeData) {
-      res.json(JSON.parse(tradeData));
-      //  res.json(tradeData);
-    } else {
-      res.status(404).json({ error: "No trade data available" });
-    }
-  } catch (error) {
-    console.error("Error fetching trade data:", error);
-    res.status(500).json({ error: "Failed to fetch trade data" });
-  }
-});
 
 // Helper: Ping Binance to check connection health
 let pingInterval: NodeJS.Timeout;
@@ -290,8 +172,3 @@ process.on("SIGINT", () => {
 
 // Start the WebSocket connection
 connectWebSocket();
-
-// Start the express REST API server
-app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
-});
