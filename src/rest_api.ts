@@ -1,6 +1,6 @@
 import express from "express";
 
-import fetchAllKeysAndValues from "./stream_futures";
+import fetchAllKeysAndValues from "./redis_get";
 
 const ENDPOINT_VERSION = "/v1";
 

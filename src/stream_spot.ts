@@ -63,6 +63,7 @@ interface TickerData {
   a: string;
   b: string;
   v: string;
+  Q: string;
 }
 
 // Sort websocket data and store to redis
@@ -70,11 +71,14 @@ function handleTickerData(data: WebSocket.Data) {
   try {
     const tickers: TickerData[] = JSON.parse(data.toString());
     tickers.forEach((ticker) => {
-      const { s: symbol, c: price, b: bid, a: ask, v: volume } = ticker;
+      const { s: symbol, c: price, b: bid, a: ask, Q: volume } = ticker;
       const redisKey = `${ws?.url.includes("f") ? "futures:" : "spot:"}${symbol}`;
       const market = `${ws?.url.includes("f") ? "futures" : "spot"}`;
 
+      console.log("spot ticker", ticker);
+
       if (Number(price) > 0 && price !== undefined) {
+        const vol = Number(price) * Number(volume);
         const spr = Number(ask) - Number(bid);
         const sprPer = (Number(spr) / Number(ask)) * 100;
         const dataIn = {
@@ -82,6 +86,7 @@ function handleTickerData(data: WebSocket.Data) {
           symbol: symbol,
           bid: bid,
           ask: ask,
+          volume: vol.toString(),
           spread: spr.toString(),
           spread_percent: sprPer.toString(),
         };
@@ -102,36 +107,36 @@ function handleTickerData(data: WebSocket.Data) {
 }
 
 // redis get key values and build an object
-async function fetchAllKeysAndValues() {
-  try {
-    // get all the keys in an array
-    const keys: string[] = await redisClient.keys("*");
+// async function fetchAllKeysAndValues() {
+//   try {
+//     // get all the keys in an array
+//     const keys: string[] = await redisClient.keys("*");
 
-    //  console.log(`Total number of keys: ${keys.length}`);
+//     //  console.log(`Total number of keys: ${keys.length}`);
 
-    // Array to store parsed key-value data
-    const parsedData: Array<Record<string, any>> = [];
+//     // Array to store parsed key-value data
+//     const parsedData: Array<Record<string, any>> = [];
 
-    // Fetch and parse each key's value
-    for (const key of keys) {
-      const value = await redisClient.get(key);
+//     // Fetch and parse each key's value
+//     for (const key of keys) {
+//       const value = await redisClient.get(key);
 
-      if (value) {
-        try {
-          // Parse the JSON string and add the object to the array
-          const jsonData = JSON.parse(value);
-          parsedData.push(jsonData);
-        } catch (error) {
-          console.error(`Error parsing value for key "${key}":`, error);
-        }
-      }
-    }
+//       if (value) {
+//         try {
+//           // Parse the JSON string and add the object to the array
+//           const jsonData = JSON.parse(value);
+//           parsedData.push(jsonData);
+//         } catch (error) {
+//           console.error(`Error parsing value for key "${key}":`, error);
+//         }
+//       }
+//     }
 
-    return parsedData;
-  } catch (error) {
-    console.error("Error fetching keys and values:", error);
-  }
-}
+//     return parsedData;
+//   } catch (error) {
+//     console.error("Error fetching keys and values:", error);
+//   }
+// }
 
 // Helper: Ping Binance to check connection health
 let pingInterval: NodeJS.Timeout;

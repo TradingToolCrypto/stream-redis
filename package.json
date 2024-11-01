@@ -7,7 +7,7 @@
     "express": "ts-node src/rest_api.ts",
     "spot": "ts-node src/stream_spot.ts",
     "futures": "ts-node src/stream_futures.ts",
-    "pretty" : "npx prettier . --write"
+    "pretty": "npx prettier . --write"
   },
   "keywords": [],
   "author": "",
