@@ -38,7 +38,7 @@ For futures and spot data feeds follow these instructions
 
 REDIS
 
-[windows install](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/install-redis-on-windows/) 
+[windows install](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/install-redis-on-windows/)
 
 MT5-TTC
 
