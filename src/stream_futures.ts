@@ -63,6 +63,7 @@ interface TickerData {
   a: string;
   b: string;
   v: string;
+  Q: string;// last quantity traded 
 }
 
 // Sort websocket data and store to redis
@@ -70,7 +71,9 @@ function handleTickerData(data: WebSocket.Data) {
   try {
     const tickers: TickerData[] = JSON.parse(data.toString());
     tickers.forEach((ticker) => {
-      const { s: symbol, c: price } = ticker;
+      const { s: symbol, c: price , Q:volume} = ticker;
+
+      //console.log("ticker", ticker);
 
       // futures data is different than spot
 
@@ -80,6 +83,7 @@ function handleTickerData(data: WebSocket.Data) {
       if (Number(price) > 0 && price !== undefined) {
         let bid = price;
         let ask = price;
+        let vol = Number(price)* Number(volume);
 
         const spr = Number(ask) - Number(bid);
         const sprPer = (Number(spr) / Number(ask)) * 100;
@@ -88,6 +92,7 @@ function handleTickerData(data: WebSocket.Data) {
           symbol: symbol,
           bid: bid,
           ask: ask,
+          volume: vol.toString(),
           spread: spr.toString(),
           spread_percent: sprPer.toString(),
         };
